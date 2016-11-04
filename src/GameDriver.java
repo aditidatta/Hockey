@@ -1,6 +1,7 @@
 import net.java.games.input.*;
 import net.java.games.input.Component;
 
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -28,6 +29,11 @@ public class GameDriver {
     Puck     puck;
 
     Controller controller = null;
+    Image num1 = Toolkit.getDefaultToolkit().getImage("img/one.png");
+    Image num2 = Toolkit.getDefaultToolkit().getImage("img/two.png");
+    Image num3 = Toolkit.getDefaultToolkit().getImage("img/three.png");
+    Image num4 = Toolkit.getDefaultToolkit().getImage("img/four.png");
+
 
     MouseEvent e;
 
@@ -40,6 +46,7 @@ public class GameDriver {
     private void searchForControllers() {
         Controller[] controllers = ControllerEnvironment.getDefaultEnvironment().getControllers();
 
+        System.out.println(controllers.length);
         for(int i = 0; i < controllers.length; i++){
             controller = controllers[i];
 
@@ -60,6 +67,16 @@ public class GameDriver {
     public GameDriver(){
         ui      = new UI("Hockey");
 
+        int width = 1366;
+        int height = 768;
+        int horizontalMiddle = height/2;
+        int verticalCenter = width/2;
+        int circleRadius = height/20;
+        int centerY1 = height/5;
+        int centerY2 = height/5 * 2;
+        int centerY3 = height/5 * 3;
+        int centerY4 = height/5 * 4;
+
 
         // Moving objects
         puck = new Puck(0,new Point(500, 275), 0, 0, 8, Color.BLACK);
@@ -67,12 +84,11 @@ public class GameDriver {
 
         // CREATING PLAYERS AND GOALIES mmm
 
-        p1   = new Player(1,new Point(480, 275), 3, 3*Math.PI - 0.523599, 12, Color.RED, puck);
-        p2   = new Player(2,new Point(690, 370), 0, 3*Math.PI - 0.523599, 12, Color.GREEN, puck);
-        p3   = new Player(3,new Point(320, 170), 3, 4*Math.PI - 0.523599, 12, Color.MAGENTA, puck);
-        p4   = new Player(4,new Point(530, 275), 3, 4*Math.PI - 0.523599, 12, Color.BLUE, puck);
-        g1   = new Goalie1(5,new Point(190+20, 275), 3, 4*Math.PI - 0.523599, 10, Color.LIGHT_GRAY, puck);
-        g2   = new Goalie2(6,new Point(810-20, 275), 3, Math.PI, 10, Color.LIGHT_GRAY, puck);
+        p1   = new Player(1,new Point(verticalCenter, centerY1), 3, 3*Math.PI - 0.523599, circleRadius, num1, puck);
+        p2   = new Player(2,new Point(verticalCenter, centerY2), 0, 3*Math.PI - 0.523599, circleRadius, num2, puck);
+        p3   = new Player(3,new Point(verticalCenter, centerY3), 3, 4*Math.PI - 0.523599, circleRadius, num3, puck);
+        p4   = new Player(4,new Point(verticalCenter, centerY4), 3, 4*Math.PI - 0.523599, circleRadius, num4, puck);
+
 
         Rink.selectedPlayer = p1;
         Rink.selectedPlayer2 = p2;
@@ -82,14 +98,24 @@ public class GameDriver {
 
         searchForControllers();
 
+        Player[] players = new Player[]{p1, p2, p3, p4};
 
-        if(!foundControllers.isEmpty()){
-            rink    = new Rink(foundControllers.get(0));
-        }
-        else{
-            rink = new Rink();
+        for(int i = 0; i < foundControllers.size(); i++){
+            players[i].controller = foundControllers.get(i);
         }
 
+        JFrame menuFrame = new JFrame();
+        //JPanel mainPanel = new JPanel();
+        Menu menu = new Menu(width, height, players);
+        //JPanel buttonPanel
+        menuFrame.add(menu);
+        menuFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        menuFrame.pack();
+        menuFrame.setVisible(true);
+        /*
+        g1   = new Goalie1(5,new Point(190+20, 275), 3, 4*Math.PI - 0.523599, 10, Color.LIGHT_GRAY, puck);
+        g2   = new Goalie2(6,new Point(810-20, 275), 3, Math.PI, 10, Color.LIGHT_GRAY, puck);
         rink.addKeys();
         //s1.setPlayer(p1);
         // GIVING PUCK REFERENCE TO GOALIES
@@ -113,7 +139,7 @@ public class GameDriver {
 
 
         rink.addMouseMotionListener(rink);
-
+        */
        // rink.addKeyListener(rink);
     }
 

@@ -43,6 +43,12 @@ public class Rink extends JPanel implements Runnable, MouseMotionListener{
     int goalieTimer = 0;
     int resetTimer = 0;
     int afterGoalTimer = 0;
+    Line2DMod topBoundry;
+    Line2DMod bottomBoundry;
+    Line2DMod leftBoundry;
+    Line2DMod rightBoundry;
+
+
 
     boolean flag = false;
     static int reset = 0;
@@ -79,6 +85,7 @@ public class Rink extends JPanel implements Runnable, MouseMotionListener{
         add(scorePanel);
         setVisible(true);
         controller = c;
+
     }
     Rink(ArrayList <Controller> cl) {
         // set a preferred size for the custom panel.
@@ -92,6 +99,17 @@ public class Rink extends JPanel implements Runnable, MouseMotionListener{
         setPreferredSize(new Dimension(1000,550));
         add(scorePanel);
         setVisible(true);
+        topBoundry = new Line2DMod(200, 100, 800, 100, ObjectType.STILL_HARD);
+        bottomBoundry = new Line2DMod(200, 450, 800, 450, ObjectType.STILL_HARD);
+        leftBoundry = new Line2DMod(100, 200, 100, 350, ObjectType.STILL_HARD);
+        rightBoundry = new Line2DMod(900, 200, 900, 350, ObjectType.STILL_HARD);
+        /*leftGoalTop = new Line2DMod();
+        leftGoalBottom = new Line2DMod();
+        leftGoalBack = new Line2DMod();
+        rightGoalTop = new Line2DMod();
+        rightGoalBottom = new Line2DMod();
+        rightGoalBack = new Line2DMod();
+        */
     }
 
 
@@ -101,6 +119,7 @@ public class Rink extends JPanel implements Runnable, MouseMotionListener{
         Graphics2D rink = (Graphics2D) g;
 
         rink.setStroke(new BasicStroke(3));
+
 
         rink.setColor(Color.RED);
         rink.draw(new Line2D.Double(190, 100, 190, 450)); // first vertical lines on rink
@@ -116,13 +135,20 @@ public class Rink extends JPanel implements Runnable, MouseMotionListener{
         rink.setColor(Color.GREEN);// center X line
         rink.draw(new Line2D.Double(190, 275, 810, 275));
 
+
         rink.setColor(Color.RED); //goals
         rink.draw(new Rectangle2D.Double(MovingObject.leftGoalBack, MovingObject.topGoalPost, 30, 80));
         rink.draw(new Rectangle2D.Double(MovingObject.rightGoalLine, MovingObject.topGoalPost, 30, 80));
 
         rink.drawOval(445, 220, 110, 110);
         rink.setColor(Color.BLACK);
-        rink.draw(new RoundRectangle2D.Double(100, 100, 800, 350, 200, 200));
+
+        //rink.draw(new RoundRectangle2D.Double(100, 100, 800, 350, 200, 200));
+
+        rink.draw(topBoundry);
+        rink.draw(bottomBoundry);
+        rink.draw(leftBoundry);
+        rink.draw(rightBoundry);
 
         rink.setColor(Color.BLUE);//crease
         rink.fillArc(190-40, 232, 86, 86, 90, -180);

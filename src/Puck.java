@@ -12,6 +12,8 @@ public class Puck extends MovingObject {
 
     int postTimer = 0;
     int hold = 0;
+    Rect leftGoal = new Rect(MovingObject.leftGoalBack+2, MovingObject.topGoalPost+2, 30+4, 80+4);
+    Rect rightGoal = new Rect(MovingObject.rightGoalLine+2, MovingObject.topGoalPost+2, 30+4, 80+4);
     double frictionCoefficient = .95;
     public Puck(int id, Point point, int speed, double angle, int radius, Color color) {
         super(id, point, speed, angle, radius, color);
@@ -35,7 +37,7 @@ public class Puck extends MovingObject {
 
 
     public boolean goalScoredLeft(){
-        if(location.x > leftGoalBack
+        /*if(location.x > leftGoalBack
                 && location.x < leftGoalLine
                 && location.y  - dummy_radius > topGoalPost
                 && location.y  + dummy_radius< bottomGoalPost ){
@@ -44,6 +46,13 @@ public class Puck extends MovingObject {
 
             //Player.release = 0;
 
+            return true;
+        }
+        return false;
+        */
+        Rect puckRect = new Rect(location.x-dummy_radius, location.y-dummy_radius, dummy_radius*2, dummy_radius*2);
+        if(leftGoal.contains(puckRect)) {
+            setSpeed(0);
             return true;
         }
         return false;
@@ -175,7 +184,7 @@ public class Puck extends MovingObject {
         }
 
 
-
+        /*
         // Left goal post
         if(location.x < leftGoalLine && location.y < topGoalPost){
             if(location.y >= topGoalPost- dummy_radius && location.x > leftGoalBack){
@@ -207,6 +216,23 @@ public class Puck extends MovingObject {
                 location.y < bottomGoalPost){
             if(location.x <= rightGoalBack+ dummy_radius)
                 reflection(angle, 1);
+        }
+        */
+
+        Rect puckRect = new Rect(location.x-dummy_radius, location.y-dummy_radius, dummy_radius*2, dummy_radius*2);
+        if(leftGoal.intersects(puckRect)){
+            //reflection(angle, 1);
+            if(location.x < leftGoalLine && puckRect.y < topGoalPost){
+                reflection(angle, 2);
+            }
+            else if(puckRect.x < leftGoalLine  && puckRect.y+puckRect.height > bottomGoalPost){
+                reflection(angle, 2);
+
+            }
+            else if(puckRect.x < leftGoalBack && location.y > topGoalPost &&
+                    location.y < bottomGoalPost){
+                reflection(angle, 1);
+            }
         }
         // hit the post,,aa
         else if((distanceFromLeftBottomPost < dummy_radius

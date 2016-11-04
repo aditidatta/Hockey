@@ -1,3 +1,5 @@
+import net.java.games.input.Controller;
+
 import java.awt.*;
 import java.util.LinkedList;
 
@@ -31,9 +33,22 @@ public class Player extends MovingObject{
     int slideLimit = 9;
     double oldAngle = 0;
     int buttonInputLimitFrames = 0;
+    int stickInputLimitFrames = 0;
     double tempSpeed;
     double tempAngle;
     double frictionCoefficient = .8;
+
+    Controller controller;
+    int xAxisPercentage;
+    int yAxisPercentage;
+    String buttonIndex = "";
+    double initAngle;
+
+    //MouseEvent e = null;
+    boolean dragged = false;
+    static boolean moved = false;
+    Image img;
+
 
     public Player(int id, Point point, int speed, double angle, int radius, Color color, Puck puck) {
         super(id, point, speed, angle, radius, color);
@@ -41,7 +56,28 @@ public class Player extends MovingObject{
         this.puck = puck;
         this.stick = new Stick(20);
         dummy_radius = stick.length;
+        this.img = null;
     }
+
+    public Player(int id, Point point, int speed, double angle, int radius, Image img, Color color, Puck puck) {
+        super(id, point, speed, angle, radius, color);
+        this.teamColor = color;
+        this.puck = puck;
+        this.stick = new Stick(20);
+        dummy_radius = stick.length;
+        this.img = img;
+    }
+
+
+    public Player(int id, Point point, int speed, double angle, int radius, Image img, Puck puck) {
+        super(id, point, speed, angle, radius, Color.black);
+        this.teamColor = color;
+        this.puck = puck;
+        this.stick = new Stick(20);
+        dummy_radius = stick.length;
+        this.img = img;
+    }
+
 
 
     public void setPuck(Puck pk){
@@ -54,6 +90,10 @@ public class Player extends MovingObject{
         g2d.fillOval(location.x-dummy_radius, location.y-dummy_radius, dummy_radius*2, dummy_radius*2);
         g2d.setColor(color);
         g2d.fillOval(location.x - radius, location.y - radius, radius*2, radius*2); // i think this is right
+    }
+
+    public void drawImage(Graphics2D g2d){
+        g2d.drawImage(img, location.x - radius, location.y - radius, radius*2, radius*2, this);
     }
 
 
@@ -557,9 +597,91 @@ public class Player extends MovingObject{
             puck.location.y = (int) (puck.location.y + puck.speed * Math.sin(puck.angle));
 
         }
-
-
     }
+
+    public int getAxisValueInPercentage(float axisValue) {
+        return (int)(((2 - (1 - axisValue)) * 100) / 2);
+    }
+
+
+    public void gamepad(){
+
+        // Currently selected controller.
+        //int selectedControllerIndex = window.getSelectedControllerName();
+        //Controller controller = foundControllers.get(selectedControllerIndex);
+
+        controller.poll();
+        net.java.games.input.Component[] components = controller.getComponents();
+
+        buttonInputLimitFrames++;
+        stickInputLimitFrames++;
+
+        for(int i=0; i < components.length; i++) {
+            //System.out.println(components[i].getName());
+            net.java.games.input.Component component = components[i];
+            net.java.games.input.Component.Identifier componentIdentifier = component.getIdentifier();
+
+            if (componentIdentifier.getName().matches("^[0-9]*$")) { // If the component identifier name contains only numbers, then this is a button.
+                // Is button pressed?
+                boolean isItPressed = true;
+                if (component.getPollData() == 0.0f) {
+                    isItPressed = false;
+                }
+                else{
+                    buttonIndex = component.getIdentifier().toString();
+                    buttonActions();
+                    //System.out.println(buttonIndex);
+
+                }
+                continue;
+            }
+
+            if (component.isAnalog()) {
+                float axisValue = component.getPollData();
+                //System.out.println(axisValue);
+                int axisValueInPercentage = getAxisValueInPercentage(axisValue);
+
+
+                // X axis
+                if (componentIdentifier == net.java.games.input.Component.Identifier.Axis.X) {
+                    xAxisPercentage = axisValueInPercentage;
+                    //System.out.println("X " + xAxisPercentage);
+                    continue; // Go to next component.
+                }
+                // Y axis
+                if (componentIdentifier == net.java.games.input.Component.Identifier.Axis.Y) {
+                    yAxisPercentage = axisValueInPercentage;
+                    // System.out.println("Y " + yAxisPercentage);
+                    continue; // Go to next component.
+                }
+
+            }
+            //if button index is not null, wait a half a second il next input
+        }
+    }
+
+
+    public void buttonActions(){
+
+        if(buttonInputLimitFrames >20) {
+
+            if (buttonIndex.equals("0")) {
+                pressZeroButton();
+
+            } else if (buttonIndex.equals("1") || buttonIndex.equals("3")) {
+                pressOneButton();
+
+            } else if (buttonIndex.equals("2")) {
+                pressTwoButton();
+            }
+
+            if (buttonIndex != "") {
+                buttonInputLimitFrames = 0;
+            }
+
+        }
+    }
+
 
     protected class Stick {
 
@@ -589,11 +711,6 @@ public class Player extends MovingObject{
             a = (int)(x + length * Math.cos(angle));
             b = (int)(y + length * Math.sin(angle));
         }
-
-
-
-
-
 
         public void draw(Graphics2D g2d) {
             g2d.setStroke(new BasicStroke(5));
