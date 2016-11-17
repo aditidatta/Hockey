@@ -2,7 +2,10 @@ import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
 import java.util.ArrayList;
@@ -120,15 +123,26 @@ public class Menu extends JPanel implements Runnable{
         for(int i = 0; i < 4; i++){
             activePlayers[i].setLocation(centerPositions[i]);
         }
-        okButton.setLocation(new Point(1200,600));
+
+        setLayout(null);
+
+        okButton.setLocation(new Point(verticalCenter - 100, lineY+20));
+        okButton.setSize(200, 80);
+        okButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        });
+
         add(okButton);
+
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
-
 
         g2d.setColor(Color.GRAY);
 

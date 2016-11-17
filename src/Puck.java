@@ -97,7 +97,7 @@ public class Puck extends MovingObject {
         Line incident = new Line(center, end);
         Point tangentStart = new Point(end);
         Point tangentEnd = new Point();
-        double angle1 = angle + ((Math.PI/180)*1);
+        double angle1 = angle + ((Math.PI/180));
         tangentEnd.x = center.x + (int) Math.round((100*Math.cos(angle1)));
         tangentEnd.y = center.y + (int) Math.round((100*Math.sin(angle1)));
         Line tangent = new Line(tangentStart, tangentEnd);

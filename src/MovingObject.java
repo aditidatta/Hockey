@@ -95,9 +95,6 @@ public abstract class MovingObject extends JComponent {
         return tempSpeed;
     }
 
-
-
-
     //test
     public abstract void hitWalls();
     public abstract void updateLocation();
@@ -119,6 +116,5 @@ public abstract class MovingObject extends JComponent {
     public double getDistance(int x1, int x2, int y1, int y2){
         return Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2));
     }
-
 
 }

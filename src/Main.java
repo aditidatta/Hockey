@@ -11,7 +11,9 @@ public class Main {
         ///*
 
         //*/
-
+        //System.out.println(System.currentTimeMillis());
         GameDriver gd = new GameDriver();
+        //TimeStep ts = new TimeStep();
+        //ts.start();
     }
 }
