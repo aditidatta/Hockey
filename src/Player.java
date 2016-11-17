@@ -1,6 +1,7 @@
 import net.java.games.input.Controller;
 
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.util.LinkedList;
 
 /**
@@ -10,8 +11,7 @@ import java.util.LinkedList;
  * @version 1
  */
 
-public class Player extends MovingObject{
-
+public class Player extends MovingObject {
 
     Color teamColor;
     Puck puck;
@@ -27,56 +27,72 @@ public class Player extends MovingObject{
     int oldY = 0;
     double distance = 0;
     int bodyCheckFrames = 0;
+    int slapShotFrames = 0;
     boolean bodyCheckFlag = false;
+    boolean slapShotFlag = false;
     int stealFrames = 0;
     boolean stealFlag = false;
     int slideLimit = 9;
     double oldAngle = 0;
-    int buttonInputLimitFrames = 0;
+    int buttonInputLimitFrames;
+    int preventHoldingButtons;
     int stickInputLimitFrames = 0;
     double tempSpeed;
     double tempAngle;
-    double frictionCoefficient = .8;
+    double frictionCoefficient = 0.2;
+    int startX;
+    int startY;
+    static int i = 0;
 
     Controller controller;
     int xAxisPercentage;
     int yAxisPercentage;
     String buttonIndex = "";
+    String previousButton = "";
     double initAngle;
 
-    //MouseEvent e = null;
+    MouseEvent e = null;
     boolean dragged = false;
     static boolean moved = false;
     Image img;
 
+    double slapShotSpeed = Math.round(GameDriver.rinkWidth/100 );
+    double wristShotSpeed = Math.round(GameDriver.rinkWidth/156);
+    double playerSpeed = Math.round(GameDriver.rinkWidth/260);
 
-    public Player(int id, Point point, int speed, double angle, int radius, Color color, Puck puck) {
+
+
+    public Player(int id, PointDouble point, int speed, double angle, int radius, Color color, Puck puck, Image img) {
         super(id, point, speed, angle, radius, color);
         this.teamColor = color;
         this.puck = puck;
-        this.stick = new Stick(20);
-        dummy_radius = stick.length;
-        this.img = null;
-    }
-
-    public Player(int id, Point point, int speed, double angle, int radius, Image img, Color color, Puck puck) {
-        super(id, point, speed, angle, radius, color);
-        this.teamColor = color;
-        this.puck = puck;
-        this.stick = new Stick(20);
-        dummy_radius = stick.length;
+        this.stick = new Stick(radius * 5/3);
+        dummy_radius = stick.length + adjustment;
+        //System.out.println(dummy_radius);
+        startX = (int) point.x;
+        startY = (int) point.y;
+        initAngle = angle;
+        buttonInputLimitFrames = 0;
+        stickInputLimitFrames = 0;
         this.img = img;
     }
 
 
-    public Player(int id, Point point, int speed, double angle, int radius, Image img, Puck puck) {
-        super(id, point, speed, angle, radius, Color.black);
+    public Player(int id, PointDouble point, int speed, double angle, int radius, Color color, Puck puck) {
+        super(id, point, speed, angle, radius, color);
         this.teamColor = color;
         this.puck = puck;
-        this.stick = new Stick(20);
-        dummy_radius = stick.length;
-        this.img = img;
+        this.stick = new Stick(radius * 5/3);
+        dummy_radius = stick.length + adjustment;
+        startX = (int) point.x;
+        startY = (int) point.y;
+        initAngle = angle;
+        buttonInputLimitFrames = 0;
+        stickInputLimitFrames = 0;
     }
+
+
+
 
 
 
@@ -87,15 +103,118 @@ public class Player extends MovingObject{
     public void draw(Graphics2D g2d){
         stick.draw(g2d);
         g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 60));
-        g2d.fillOval(location.x-dummy_radius, location.y-dummy_radius, dummy_radius*2, dummy_radius*2);
+        g2d.fillOval((int) Math.round(location.x-dummy_radius), (int) Math.round(location.y-dummy_radius), dummy_radius*2, dummy_radius*2);
         g2d.setColor(color);
-        g2d.fillOval(location.x - radius, location.y - radius, radius*2, radius*2); // i think this is right
+        g2d.fillOval((int) Math.round(location.x - radius), (int) Math.round(location.y - radius), radius*2, radius*2); // i think this is right
     }
 
-    public void drawImage(Graphics2D g2d){
-        g2d.drawImage(img, location.x - radius, location.y - radius, radius*2, radius*2, this);
+
+    protected void drawImage(Graphics g) {
+        Graphics2D g2d = (Graphics2D) g;
+
+        //g2d.drawImage(img, xLocation1, yLocation1, circleDiameter, circleDiameter, this);
     }
 
+    public int getAxisValueInPercentage(float axisValue) {
+        return (int)(((2 - (1 - axisValue)) * 100) / 2);
+    }
+
+    public void gamepad(){
+        System.out.println(previousButton);
+        boolean set = false;
+        // Currently selected controller.
+        //int selectedControllerIndex = window.getSelectedControllerName();
+        //Controller controller = foundControllers.get(selectedControllerIndex);
+
+        controller.poll();
+        net.java.games.input.Component[] components = controller.getComponents();
+
+        buttonInputLimitFrames++;
+        //preventHoldingButtons = buttonInputLimitFrames;
+        stickInputLimitFrames++;
+
+        for(int i=0; i < components.length; i++) {
+            //System.out.println(components[i].getName());
+            net.java.games.input.Component component = components[i];
+            net.java.games.input.Component.Identifier componentIdentifier = component.getIdentifier();
+            //previousButton = component.getIdentifier().toString();
+            //System.out.println(previousButton);
+
+
+
+            if (componentIdentifier.getName().matches("^[0-9]*$")) { // If the component identifier name contains only numbers, then this is a button.
+                // Is button pressed?
+                boolean isItPressed = true;
+                if (component.getPollData() == 0.0f) {
+                    isItPressed = false;
+                }
+                else{
+                    //System.out.println(buttonInputLimitFrames);
+                    set = true;
+                    buttonIndex = component.getIdentifier().toString();
+                    if (!buttonIndex.equals(previousButton)) {
+                        //System.out.println("test previous button");
+                        buttonActions();
+                        previousButton = buttonIndex;
+                    }
+
+
+                    //System.out.println(buttonIndex);
+
+                }
+                continue;
+            }
+
+
+            if (component.isAnalog()) {
+                float axisValue = component.getPollData();
+                //System.out.println(axisValue);
+                int axisValueInPercentage = getAxisValueInPercentage(axisValue);
+
+
+                // X axis
+                if (componentIdentifier == net.java.games.input.Component.Identifier.Axis.X) {
+                    xAxisPercentage = axisValueInPercentage;
+                    //System.out.println("X " + xAxisPercentage);
+                    continue; // Go to next component.
+                }
+                // Y axis
+                if (componentIdentifier == net.java.games.input.Component.Identifier.Axis.Y) {
+                    yAxisPercentage = axisValueInPercentage;
+                    // System.out.println("Y " + yAxisPercentage);
+                    continue; // Go to next component.
+                }
+
+            }
+            //if button index is not null, wait a half a second il next input
+        }
+        if(!set) {
+            previousButton = "";
+        }
+    }
+
+
+    public void buttonActions(){
+
+        if(buttonInputLimitFrames >40) {
+
+            if (buttonIndex.equals("0")) {
+                System.out.println("steal");
+                pressZeroButton();
+
+            } else if (buttonIndex.equals("1") || buttonIndex.equals("3")) {
+                pressOneButton();
+
+            } else if (buttonIndex.equals("2")) {
+                pressTwoButton();
+            }
+
+            if (buttonIndex != "") {
+                buttonInputLimitFrames = 0;
+            }
+        }
+
+    }
 
 
     public void rubWalls(){
@@ -103,52 +222,58 @@ public class Player extends MovingObject{
 
         switch (hitWall){
             case 1:
-                location.y = topBoundary + dummy_radius;
+                location.y = GameDriver.topBoundary + dummy_radius;
                 break;
             case 2:
-                location.y = bottomBoundary - dummy_radius;
+                location.y = GameDriver.bottomBoundary - dummy_radius;
                 break;
             case 3:
-                location.x = leftBoundary + dummy_radius;
+                location.x = GameDriver.leftBoundary + dummy_radius;
                 break;
             case 4:
-                location.x = rightBoundary - dummy_radius;
+                location.x = GameDriver.rightBoundary - dummy_radius;
                 break;
             case 5:
-                location.y = topGoalPost - dummy_radius;//left and right goal top
+                location.y = GameDriver.topGoalPost - dummy_radius - smallBuffer;//left and right goal top
                 break;
             case 6:
-                location.y = bottomGoalPost + dummy_radius;//left and right goal bottom
+                location.y = GameDriver.bottomGoalPost + dummy_radius + smallBuffer;//left and right goal bottom
                 break;
             case 7:
-                location.x = leftGoalBack - dummy_radius;//left  goal back
+                location.x = GameDriver.leftGoalBack - dummy_radius - smallBuffer;//left  goal back
                 break;
             case 8:
-                location.x = rightGoalBack + dummy_radius;//right goal back
+                location.x = GameDriver.rightGoalBack + dummy_radius + smallBuffer;//right goal back
                 break;
             case 9:
-                location.x = leftGoalLine + radius;//left goal front
+                location.x = GameDriver.leftGoalLine + radius;//left goal front
                 break;
             case 10:
-                location.x = rightGoalLine - radius;//right goal front
+                location.x = GameDriver.rightGoalLine - radius;//right goal front
                 break;
             case 11://top left net corner
-                location.x = leftGoalBack - dummy_radius;
-                location.y = topGoalPost - dummy_radius;
+                location.x = GameDriver.leftGoalBack - dummy_radius ;
+                //location.y = GameDriver.topGoalPost - dummy_radius ;
                 break;
             case 12://bottom left net corner
-                location.x = leftGoalBack - dummy_radius;
-                location.y = bottomGoalPost + dummy_radius;
+                location.x = GameDriver.leftGoalBack - dummy_radius;
+                //location.y = GameDriver.bottomGoalPost + dummy_radius;
                 break;
             case 13://top right net corner
-                location.x = rightGoalBack + dummy_radius;
-                location.y = topGoalPost - dummy_radius;
+                location.x = GameDriver.rightGoalBack + dummy_radius;
+                //location.y = GameDriver.topGoalPost - dummy_radius;
                 break;
             case 14://bottom right net corner
-                location.x = rightGoalBack + dummy_radius;
-                location.y = bottomGoalPost + dummy_radius;
+                location.x = GameDriver.rightGoalBack + dummy_radius;
+                //location.y = GameDriver.bottomGoalPost + dummy_radius;
                 break;
 
+            case 15://left goal front corners
+                location.x = GameDriver.leftGoalLine + dummy_radius;
+                break;
+            case 16:
+                location.x = GameDriver.rightGoalLine - dummy_radius;
+                break;
         }
 
 
@@ -161,122 +286,158 @@ public class Player extends MovingObject{
 
     public void hitWalls(){
 
-        dummy_radius = stick.length;
-        if(location.y <= topBoundary + dummy_radius || stick.b <= topBoundary){
+
+        if(location.y <= GameDriver.topBoundary + dummy_radius || stick.b <= GameDriver.topBoundary){
             hitWall = 1;
         }
-        else if(location.y >= bottomBoundary - dummy_radius || stick.b >= bottomBoundary){
+        else if(location.y >= GameDriver.bottomBoundary - dummy_radius || stick.b >= GameDriver.bottomBoundary){
             hitWall = 2;
         }
-        else if(location.x <= leftBoundary + dummy_radius || stick.a <= leftBoundary){
+        else if(location.x <= GameDriver.leftBoundary + dummy_radius || stick.a <= GameDriver.leftBoundary){
             hitWall = 3;
         }
-        else if(location.x >= rightBoundary - dummy_radius || stick.a >= rightBoundary){
+        else if(location.x >= GameDriver.rightBoundary - dummy_radius || stick.a >= GameDriver.rightBoundary){
             hitWall = 4;
         }
 
-        else if(location.x < leftGoalLine && location.y  <= topGoalPost){//left goal top
-            if(location.y >= topGoalPost - dummy_radius && location.x >= leftGoalBack){
-                //System.out.println(location.x + " " + location.y);
+        else if(location.x < GameDriver.leftGoalLine && location.x > GameDriver.leftGoalBack && location.y < GameDriver.topGoalPost){//left goal top
+            System.out.println("player above goal");
+            if(location.y >= GameDriver.topGoalPost - dummy_radius - smallBuffer){
                 hitWall = 5;
             }
-        }
-        else if(location.x  < leftGoalLine  && location.y >= bottomGoalPost){//left goal bottom
-            if(location.y <= bottomGoalPost + dummy_radius && location.x >= leftGoalBack){
-                hitWall = 6;
-            }
-        }
-        else if(location.x < leftGoalBack && location.y > topGoalPost &&//left goal back
-                location.y < bottomGoalPost){
-            if(location.x >= leftGoalBack- dummy_radius)
-                hitWall = 7;
-        }
-        // Right Goal post
-        else if(location.x > rightGoalLine && location.y <= topGoalPost){//right goal top
-            if(location.y >= topGoalPost- dummy_radius && location.x <= rightGoalBack){
-                hitWall = 5;
-            }
-        }
-        else if(location.x > rightGoalLine  && location.y >= bottomGoalPost){//right goal bottom
-            if(location.y <= bottomGoalPost+ dummy_radius && location.x <= rightGoalBack){
-                hitWall = 6;
-            }
-        }
-        else if(location.x > rightGoalBack && location.y > topGoalPost &&//right goal back
-                location.y < bottomGoalPost){
-            if(location.x <= rightGoalBack+ dummy_radius)
-                hitWall = 8;
         }
 
-        else if(location.x > leftGoalLine && location.y > topGoalPost &&//left goal front
-                location.y < bottomGoalPost){
-            if(location.x <= leftGoalLine + radius)
+        else if(location.x < GameDriver.leftGoalLine  && location.x > GameDriver.leftGoalBack && location.y > GameDriver.bottomGoalPost){//left goal bottom
+            if(location.y <= GameDriver.bottomGoalPost + dummy_radius + smallBuffer){
+                hitWall = 6;
+            }
+        }
+        else if(location.x < GameDriver.leftGoalBack && location.y > GameDriver.topGoalPost &&//left goal back
+                location.y < GameDriver.bottomGoalPost){
+
+            if(location.x >= GameDriver.leftGoalBack - dummy_radius - smallBuffer)
+                hitWall = 7;
+        }
+
+
+
+        // Right Goal post
+        else if(location.x > GameDriver.rightGoalLine && location.x < GameDriver.rightGoalBack && location.y < GameDriver.topGoalPost){//right goal top
+            if(location.y >= GameDriver.topGoalPost - dummy_radius - smallBuffer ){
+                hitWall = 5;
+            }
+        }
+        else if(location.x > GameDriver.rightGoalLine  && location.x < GameDriver.rightGoalBack && location.y > GameDriver.bottomGoalPost){//right goal bottom
+            if(location.y <= GameDriver.bottomGoalPost + dummy_radius + smallBuffer){
+                hitWall = 6;
+            }
+        }
+        else if(location.x > GameDriver.rightGoalBack && location.y > GameDriver.topGoalPost &&//right goal back
+                location.y < GameDriver.bottomGoalPost){
+            if(location.x <= GameDriver.rightGoalBack + dummy_radius + smallBuffer) {
+                hitWall = 8;
+            }
+        }
+
+        else if(location.x > GameDriver.leftGoalLine && location.y > GameDriver.topGoalPost &&//left goal front
+                location.y < GameDriver.bottomGoalPost  && location.x < GameDriver.rightGoalLine){
+            if(location.x <= GameDriver.leftGoalLine + radius)
                 hitWall = 9;
-            else if(location.x >= rightGoalLine - radius) //right goal front
+            else if(location.x >= GameDriver.rightGoalLine - radius) //right goal front
                 hitWall = 10;
         }
 
-        else if (location.y < topGoalPost && location.x < leftGoalBack) {//left goal top right corner
-            if (location.y + dummy_radius + getSpeed() >= topGoalPost && location.x + dummy_radius + getSpeed()>= leftGoalBack) {
+        else if (location.y < GameDriver.topGoalPost && location.x < GameDriver.leftGoalBack) {//left goal top back corner
+            if (location.y + dummy_radius >= GameDriver.topGoalPost && location.x + dummy_radius >= GameDriver.leftGoalBack) {
                 hitWall = 11;
             }
         }
-        else if (location.y > bottomGoalPost && location.x < leftGoalBack) {//left goal bottom  corner
-            if (location.y - dummy_radius - getSpeed() <= bottomGoalPost && location.x + dummy_radius + getSpeed()>= leftGoalBack) {
+        else if (location.y > GameDriver.bottomGoalPost && location.x < GameDriver.leftGoalBack) {//left goal bottom  corner
+            if (location.y - dummy_radius <= GameDriver.bottomGoalPost && location.x + dummy_radius >= GameDriver.leftGoalBack) {
                 hitWall = 12;
             }
         }
-        else if (location.y < topGoalPost && location.x > rightGoalBack) {//right goal top  corner
-            if (location.y + dummy_radius + getSpeed() >= topGoalPost && location.x - dummy_radius - getSpeed()<= rightGoalBack) {
+        else if (location.y < GameDriver.topGoalPost && location.x > GameDriver.rightGoalBack) {//right goal top back corner
+            if (location.y + dummy_radius >= GameDriver.topGoalPost && location.x - dummy_radius <= GameDriver.rightGoalBack) {
                 hitWall = 13;
             }
         }
-        else if (location.y > bottomGoalPost && location.x > rightGoalBack) {//right goal bottom  corner
-            if (location.y - dummy_radius - getSpeed() <= bottomGoalPost && location.x - dummy_radius - getSpeed()<= rightGoalBack) {
+        else if (location.y > GameDriver.bottomGoalPost && location.x > GameDriver.rightGoalBack) {//right goal bottom back corner
+            if (location.y - dummy_radius  <= GameDriver.bottomGoalPost && location.x - dummy_radius <= GameDriver.rightGoalBack) {
                 hitWall = 14;
             }
         }
+        else if (location.y < GameDriver.topGoalPost && location.x > GameDriver.leftGoalLine) {//left goal top front corner
+            if (location.y + dummy_radius  >= GameDriver.topGoalPost && location.x - dummy_radius <= GameDriver.leftGoalLine) {
+                hitWall = 15;
+            }
+        }
+        else if (location.y > GameDriver.bottomGoalPost && location.x > GameDriver.leftGoalLine) {//left goal bottom corner
+            if (location.y - dummy_radius  <= GameDriver.bottomGoalPost && location.x - dummy_radius <= GameDriver.leftGoalLine) {
+                hitWall = 15;
+            }
+        }
+
+        else if (location.y < GameDriver.topGoalPost && location.x < GameDriver.rightGoalLine) {//left goal top back
+
+            if (location.y + dummy_radius >= GameDriver.topGoalPost && location.x + dummy_radius >= GameDriver.rightGoalLine) {
+                hitWall = 16;
+            }
+        }
+        else if (location.y < GameDriver.topGoalPost && location.x < GameDriver.leftGoalBack) {//left goal top back corner
+            if (location.y + dummy_radius >= GameDriver.topGoalPost && location.x + dummy_radius >= GameDriver.leftGoalBack) {
+                hitWall = 11;
+            }
+        }
+        else if (location.y > GameDriver.bottomGoalPost && location.x < GameDriver.rightGoalLine) {//left goal bottom  corner
+            if (location.y - dummy_radius <= GameDriver.bottomGoalPost && location.x + dummy_radius >= GameDriver.rightGoalLine) {
+                hitWall = 16;
+            }
+        }
 
 
-        if(location.x >= rightBoundary - 100 &&
-                location.y >= bottomBoundary - 100){
-            Point center = new Point(rightBoundary - 100, bottomBoundary - 100);
+
+
+
+        if(location.x >= GameDriver.rightBoundary - GameDriver.rinkWidth/8 &&
+                location.y >= GameDriver.bottomBoundary - GameDriver.rinkWidth/8){
+            Point center = new Point(GameDriver.rightBoundary - GameDriver.rinkWidth/8, GameDriver.bottomBoundary - GameDriver.rinkWidth/8);
             double distance = Math.hypot(location.x-center.x, location.y-center.y);
-            if (distance >= 100-dummy_radius){
+            if (distance >= GameDriver.rinkWidth/8 - dummy_radius){
                 double angle = angleWithArcCenter(center.x, center.y);
-                location.x = center.x + (int) ((100-dummy_radius)*Math.cos(angle));
-                location.y = center.y + (int) ((100-dummy_radius)*Math.sin(angle));
+                location.x = center.x + (int) ((GameDriver.rinkWidth/8-dummy_radius)*Math.cos(angle));
+                location.y = center.y + (int) (( GameDriver.rinkWidth/8 -dummy_radius)*Math.sin(angle));
             }
 
         }
-        else if(location.y <= topBoundary+100 &&
-                location.x <= leftBoundary+100){
-            Point center = new Point(leftBoundary+100,topBoundary+100);
+        else if(location.y <= GameDriver.topBoundary + GameDriver.rinkWidth/8 &&
+                location.x <= GameDriver.leftBoundary + GameDriver.rinkWidth/8){
+            Point center = new Point(GameDriver.leftBoundary + GameDriver.rinkWidth/8, GameDriver.topBoundary+ GameDriver.rinkWidth/8);
             double distance = Math.hypot(location.x-center.x, location.y-center.y);
-            if (distance >= 100-dummy_radius){
+            if (distance >= GameDriver.rinkWidth/8 - dummy_radius){
                 double angle = angleWithArcCenter(center.x, center.y);
-                location.x = center.x + (int) ((100-dummy_radius)*Math.cos(angle));
-                location.y = center.y + (int) ((100-dummy_radius)*Math.sin(angle));
+                location.x = center.x + (int) ((GameDriver.rinkWidth/8 - dummy_radius)*Math.cos(angle));
+                location.y = center.y + (int) ((GameDriver.rinkWidth/8 - dummy_radius)*Math.sin(angle));
             }
         }
-        else if(location.x <= leftBoundary+100 &&
-                location.y >= bottomBoundary - 100){
-            Point center = new Point(leftBoundary+100,bottomBoundary-100);
+        else if(location.x <= GameDriver.leftBoundary + GameDriver.rinkWidth/8 &&
+                location.y >= GameDriver.bottomBoundary - GameDriver.rinkWidth/8){
+            Point center = new Point(GameDriver.leftBoundary+100, GameDriver.bottomBoundary - GameDriver.rinkWidth/8);
             double distance = Math.hypot(location.x-center.x, location.y-center.y);
-            if (distance >= 100-dummy_radius){
+            if (distance >= GameDriver.rinkWidth/8 - dummy_radius){
                 double angle = angleWithArcCenter(center.x, center.y);
-                location.x = center.x + (int) ((100-dummy_radius)*Math.cos(angle));
-                location.y = center.y + (int) ((100-dummy_radius)*Math.sin(angle));
+                location.x = center.x + (int) ((GameDriver.rinkWidth/8 - dummy_radius)*Math.cos(angle));
+                location.y = center.y + (int) ((GameDriver.rinkWidth/8 - dummy_radius)*Math.sin(angle));
             }
         }
-        else if(location.y <= topBoundary+100 &&
-                location.x >= rightBoundary - 100){
-            Point center = new Point(rightBoundary-100,topBoundary+100);
+        else if(location.y <= GameDriver.topBoundary + GameDriver.rinkWidth/8 &&
+                location.x >= GameDriver.rightBoundary - GameDriver.rinkWidth/8){
+            Point center = new Point(GameDriver.rightBoundary - GameDriver.rinkWidth/8, GameDriver.topBoundary + GameDriver.rinkWidth/8);
             double distance = Math.hypot(location.x-center.x, location.y-center.y);
-            if (distance >= 100-dummy_radius){
+            if (distance >= GameDriver.rinkWidth/8 - dummy_radius){
                 double angle = angleWithArcCenter(center.x, center.y);
-                location.x = center.x + (int) ((100-dummy_radius)*Math.cos(angle));
-                location.y = center.y + (int) ((100-dummy_radius)*Math.sin(angle));
+                location.x = center.x + (int) ((GameDriver.rinkWidth/8 - dummy_radius)*Math.cos(angle));
+                location.y = center.y + (int) ((GameDriver.rinkWidth/8 - dummy_radius)*Math.sin(angle));
             }
         }
     }
@@ -325,6 +486,7 @@ public class Player extends MovingObject{
         double distance = getDistance(xNeutral, xAxisPercentage, yNeutral, yAxisPercentage);
         double controllerX = xAxisPercentage - xNeutral;
         double controllerY = yAxisPercentage - yNeutral;
+
         double newAngle = Math.atan2(controllerY, controllerX);
 
         stick.updateLocation();
@@ -344,7 +506,7 @@ public class Player extends MovingObject{
         }
         else if(distance >= 38) {
             setAngle(newAngle);
-            setSpeed(3);
+            setSpeed(playerSpeed);
             if(start == 1) { //if was stopped before, dont use the slide angle to calculate position
                 positionCalculation(newAngle);
                 start = 0;
@@ -395,7 +557,7 @@ public class Player extends MovingObject{
             }
         }
         else {
-            setSpeed(3);
+            setSpeed(playerSpeed);
             if(start == 1) {
                 positionCalculation(newAngle);
                 start = 0;
@@ -425,12 +587,13 @@ public class Player extends MovingObject{
     public void stickHandling() {// of its close itll turn on the hold method
 
         //Puck puck = player.puck;
-        int stickHoldingPointX = (int) Math.round((location.x + (radius - adjustment) * Math.cos(angle)));
-        int stickHoldingPointY = (int) Math.round((location.y + (radius - adjustment) * Math.sin(angle)));
+        int stickHoldingPointX = (int) Math.round((location.x + (radius ) * Math.cos(angle)));
+        int stickHoldingPointY = (int) Math.round((location.y + (radius ) * Math.sin(angle)));
 
-        double distance = getDistance(puck.location.x, stickHoldingPointX, puck.location.y, stickHoldingPointY);
+        double distance = getDistance((int) Math.round(puck.location.x), stickHoldingPointX,
+                (int) Math.round(puck.location.y), stickHoldingPointY);//distance from puck
 
-        if (distance <= puckGrabArea && release != 1) {
+        if (distance <= puckGrabArea && release != 1) {//of your
 
             if(puck.hold == 0){
 
@@ -439,6 +602,7 @@ public class Player extends MovingObject{
             else if (stealFlag){
                 puck.hold = id;
                 stealFlag = false;
+                stealFrames = 0;
             }
 
             //Rink.possession = id;
@@ -453,8 +617,8 @@ public class Player extends MovingObject{
 
     public void holdPuck() {
         //possession = id;
-        int stickHoldingPointX = (int) Math.round((location.x + 12 * Math.cos(angle)));
-        int stickHoldingPointY = (int) Math.round((location.y + 12 * Math.sin(angle)));
+        int stickHoldingPointX = (int) Math.round((location.x + (radius ) * Math.cos(angle)));
+        int stickHoldingPointY = (int) Math.round((location.y + (radius ) * Math.sin(angle)));
 
         puck.location.x = stickHoldingPointX;
         puck.location.y = stickHoldingPointY;
@@ -468,17 +632,23 @@ public class Player extends MovingObject{
         puck.hold = 0;
         //Rink.possession = 0;
         puck.setAngle(angle);
-        puck.setSpeed(5);
+        puck.setSpeed(wristShotSpeed);
         puck.updateLocation();
     }
 
     public void slapShot(){
         //Rink.possession = 0;
-        release = 1;
-        puck.hold = 0;
-        puck.setAngle(angle);
-        puck.setSpeed(11);
-        puck.updateLocation();
+        slapShotFrames++;
+
+        if(slapShotFrames > 35) {
+            release = 1;
+            puck.hold = 0;
+            puck.setAngle(angle);
+            puck.setSpeed(slapShotSpeed);
+            puck.updateLocation();
+            slapShotFrames = 0;
+            slapShotFlag = false;
+        }
     }
 
 
@@ -497,13 +667,13 @@ public class Player extends MovingObject{
 
     public void bodyCheck(){
 
-            bodyCheckFrames++;
-            positionCalculation(angle);
-            stick.updateLocation();
+        bodyCheckFrames++;
+        positionCalculation(angle);
+        stick.updateLocation();
         if (bodyCheckFrames > 2 && bodyCheckFrames < 80) {//activate it between frame 2 and frame 80
 
             if(bodyCheckFrames < 10){ //only make it move forward for 10 bodyCheckFrames at this speed
-                speed = 5;
+                speed = GameDriver.rinkWidth/160;
             }
             else if (bodyCheckFrames >= 10) {//after 10 bodyCheckFrames, it has to rest for an amount
                 setSpeed(0);
@@ -517,17 +687,10 @@ public class Player extends MovingObject{
     }
 
 
-    public void stealStart(){
-        if(stealFrames >= 20|| stealFrames == 0) {
-            stealFlag = true;
-            stealFrames = 0;
-        }
-    }
-
-
     public void steal(){
         stealFrames++;
-        if (stealFrames > 10) {
+        //System.out.println(stealFrames);
+        if (stealFrames > 10) {//steal flag only last for 10 active frames
             stealFlag = false;
             stealFrames = 0;
         }
@@ -538,7 +701,14 @@ public class Player extends MovingObject{
             wristShot();
         }
         else{
-            stealFlag = true;
+            if(stealFrames == 0) {
+                stealFlag = true;//starts steal
+            }
+            else if(stealFrames > 50) {
+                System.out.println("past frame limit");
+                stealFrames = 0;
+                stealFlag = true;//starts steal
+            }
         }
     }
 
@@ -550,7 +720,8 @@ public class Player extends MovingObject{
 
     public void pressTwoButton(){
         if (puck.hold == id) {
-            slapShot();
+            slapShotFlag = true;
+            //slapShot();
         }
         else {
             bodyCheckStart();
@@ -566,7 +737,6 @@ public class Player extends MovingObject{
 
         double Y;
         double X;
-        System.out.println(puck.hold);
 
         if(release == 0 && puck.hold == 0) {
             stickHandling();
@@ -575,112 +745,37 @@ public class Player extends MovingObject{
             Y = puck.location.y - location.y;
             X = puck.location.x - location.x;
             setAngle(Math.atan2(Y, X));
+            setSpeed(wristShotSpeed);
             //goalie frozen on its track
-            location.x = (int) (location.x + 5 * Math.cos(angle));
-            location.y = (int) (location.y + 5 * Math.sin(angle));
+            positionCalculation(angle);
         }
         else if(puck.hold == 5 || puck.hold == 6){
 
-            Y = horizontalMiddle - location.y;
-            X = verticalCenter - location.x;
+            Y = GameDriver.horizontalMiddle - location.y;
+            X = GameDriver.verticalCenter - location.x;
             setAngle(Math.atan2(Y, X));
             stick.updateLocation();
 
-            double puckY = horizontalMiddle - puck.location.y;
-            double puckX = verticalCenter - puck.location.x;
+            double puckY = GameDriver.horizontalMiddle - puck.location.y;
+            double puckX = GameDriver.verticalCenter - puck.location.x;
 
 
             puck.setAngle(Math.atan2(puckY, puckX));
-            puck.setSpeed(4);
+            puck.setSpeed(wristShotSpeed);
+            System.out.println(puck.getSpeed());
             //slapShot();
-            puck.location.x = (int) (puck.location.x + puck.speed * Math.cos(puck.angle));
-            puck.location.y = (int) (puck.location.y + puck.speed * Math.sin(puck.angle));
+            puck.positionCalculation(puck.angle);
+            //puck.location.x = (int) (puck.location.x + puck.speed * Math.cos(puck.angle));
+            //puck.location.y = (int) (puck.location.y + puck.speed * Math.sin(puck.angle));
 
         }
-    }
-
-    public int getAxisValueInPercentage(float axisValue) {
-        return (int)(((2 - (1 - axisValue)) * 100) / 2);
-    }
 
 
-    public void gamepad(){
-
-        // Currently selected controller.
-        //int selectedControllerIndex = window.getSelectedControllerName();
-        //Controller controller = foundControllers.get(selectedControllerIndex);
-
-        controller.poll();
-        net.java.games.input.Component[] components = controller.getComponents();
-
-        buttonInputLimitFrames++;
-        stickInputLimitFrames++;
-
-        for(int i=0; i < components.length; i++) {
-            //System.out.println(components[i].getName());
-            net.java.games.input.Component component = components[i];
-            net.java.games.input.Component.Identifier componentIdentifier = component.getIdentifier();
-
-            if (componentIdentifier.getName().matches("^[0-9]*$")) { // If the component identifier name contains only numbers, then this is a button.
-                // Is button pressed?
-                boolean isItPressed = true;
-                if (component.getPollData() == 0.0f) {
-                    isItPressed = false;
-                }
-                else{
-                    buttonIndex = component.getIdentifier().toString();
-                    buttonActions();
-                    //System.out.println(buttonIndex);
-
-                }
-                continue;
-            }
-
-            if (component.isAnalog()) {
-                float axisValue = component.getPollData();
-                //System.out.println(axisValue);
-                int axisValueInPercentage = getAxisValueInPercentage(axisValue);
-
-
-                // X axis
-                if (componentIdentifier == net.java.games.input.Component.Identifier.Axis.X) {
-                    xAxisPercentage = axisValueInPercentage;
-                    //System.out.println("X " + xAxisPercentage);
-                    continue; // Go to next component.
-                }
-                // Y axis
-                if (componentIdentifier == net.java.games.input.Component.Identifier.Axis.Y) {
-                    yAxisPercentage = axisValueInPercentage;
-                    // System.out.println("Y " + yAxisPercentage);
-                    continue; // Go to next component.
-                }
-
-            }
-            //if button index is not null, wait a half a second il next input
-        }
     }
 
 
-    public void buttonActions(){
 
-        if(buttonInputLimitFrames >20) {
 
-            if (buttonIndex.equals("0")) {
-                pressZeroButton();
-
-            } else if (buttonIndex.equals("1") || buttonIndex.equals("3")) {
-                pressOneButton();
-
-            } else if (buttonIndex.equals("2")) {
-                pressTwoButton();
-            }
-
-            if (buttonIndex != "") {
-                buttonInputLimitFrames = 0;
-            }
-
-        }
-    }
 
 
     protected class Stick {
@@ -692,22 +787,17 @@ public class Player extends MovingObject{
         int b;
         int length;
 
-
-
-
         public Stick(int length) {
-            x = location.x;
-            y = location.y;
+            x = (int) Math.round(location.x);
+            y = (int) Math.round(location.y);
             this.length = length;
             a = (int) (x + length * Math.cos(getAngle()));
             b = (int) (y + length * Math.sin(getAngle()));
         }
 
-
-
         public void updateLocation() {
-            x = location.x;
-            y = location.y;
+            x = (int) Math.round(location.x);
+            y = (int) Math.round(location.y);
             a = (int)(x + length * Math.cos(angle));
             b = (int)(y + length * Math.sin(angle));
         }

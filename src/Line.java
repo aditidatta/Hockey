@@ -62,6 +62,26 @@ public class Line {
         A = (-1)*slopeY;
         B = slopeX;
         slopeAngle = Math.atan2(slopeY, slopeX);
+    }
+
+    public Line(PointDouble x1y1, PointDouble x2y2){
+        x1 = (int) Math.round(x1y1.x);
+        x2 = (int) Math.round(x2y2.x);
+        y1 = (int) Math.round(x1y1.y);
+        y2 = (int) Math.round(x2y2.y);
+        slopeX = x2 - x1;
+        slopeY = y2 - y1;
+        slope = ((double)slopeY)/slopeX;
+        // C = y2 - mx2
+        // m = sy / sx
+        // -sy*x + sx*y + sy*x2 - sx*y2 = 0
+        // A = -sy
+        // B = sx
+        // C = sy*x2 - sx*y2
+        C = slopeY*x2 - slopeX*y2;
+        A = (-1)*slopeY;
+        B = slopeX;
+        slopeAngle = Math.atan2(slopeY, slopeX);
 
 
     }
